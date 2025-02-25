@@ -1,9 +1,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
+#[allow(unused_imports)]
 
 pub mod parser;
 pub mod types;
+pub mod weights;
+
+use parser::{parse_proof, parse_vkey};
+use types::{ProofStr, VkeyStr};
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -11,127 +19,146 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod weights;
-pub use weights::WeightInfo;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, DefaultNoBound};
+	use bls12_381::Bls12;
+	use crate::{parse_proof, parse_vkey, ProofStr, VkeyStr};
+	use crate::weights::WeightInfo;
+	use frame_support::{
+    pallet_prelude::*,
+    dispatch::DispatchResult,
+	};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::traits::{CheckedAdd, One};
+	use core::str::from_utf8;
+	use sp_std::vec::Vec;
+
+	use bellman_verifier::verifier::{prepare_verifying_key, verify_proof};
+	use ff::PrimeField as Fr;
+
+	type PublicSignalStr = Vec<u8>;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/reference_docs/frame_runtime_types/index.html>
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
-		/// A type representing the weights required by the dispatchables of this pallet.
 		type WeightInfo: crate::weights::WeightInfo;
 	}
 
 	#[pallet::pallet]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
-	/// A struct to store a single block-number. Has all the right derives to store it in storage.
-	/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/reference_docs/frame_storage_derives/index.html>
-	#[derive(
-		Encode, Decode, MaxEncodedLen, TypeInfo, CloneNoBound, PartialEqNoBound, DefaultNoBound,
-	)]
-	#[scale_info(skip_type_params(T))]
-	pub struct CompositeStruct<T: Config> {
-		/// A block number.
-		pub(crate) block_number: BlockNumberFor<T>,
-	}
-
-	/// The pallet's storage items.
-	/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/guides/your_first_pallet/index.html#storage>
-	/// <https://paritytech.github.io/polkadot-sdk/master/frame_support/pallet_macros/attr.storage.html>
+	/// Store the proof
 	#[pallet::storage]
-	pub type Something<T: Config> = StorageValue<_, CompositeStruct<T>>;
+	pub type Pof<T: Config> = StorageValue<_, ProofStr, ValueQuery>;
 
-	/// Pallets use events to inform users when important changes are made.
-	/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/guides/your_first_pallet/index.html#event-and-error>
+	/// store the verification key
+	#[pallet::storage]
+	pub type Vkey<T: Config> = StorageValue<_, VkeyStr, ValueQuery>;
+
+	/// store the public signal
+	#[pallet::storage]
+	pub type PubSignal<T: Config> = StorageValue<_, PublicSignalStr, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// We usually use passive tense for events.
-		SomethingStored { block_number: BlockNumberFor<T>, who: T::AccountId },
+		VerificationKeyStored(T::AccountId, VkeyStr),
+		PublicSignalStored(T::AccountId, PublicSignalStr),
+		ProofStored(T::AccountId, ProofStr),
+		VerificationPassed(T::AccountId),
 	}
 
-	/// Errors inform users that something went wrong.
-	/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/guides/your_first_pallet/index.html#event-and-error>
+
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Error names should be descriptive.
-		NoneValue,
-		/// Errors should have helpful documentation associated with them.
-		StorageOverflow,
+		/// incorrect verification key format
+		ErrorVerificationKey,
+		/// incorrect proof format
+		ErrorProof,
+		/// incorrect public signal format
+		ErrorPublicSignal,
+		/// If you want to verify the proof, but there is no Verification key
+		NoVerificationKey,
+		/// no public signal to verify
+		NoPublicSignal,
+		/// parse error with public signal
+		ParsePulbicSignalError,
+		/// invalid proof
+		InvalidProof,
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-	/// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	/// These functions materialize as "extrinsics", which are often compared to transactions.
-	/// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
-	/// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/guides/your_first_pallet/index.html#dispatchables>
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a singles value as a parameter, writes the value to
-		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[pallet::call_index(0)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
-		pub fn do_something(origin: OriginFor<T>, bn: u32) -> DispatchResultWithPostInfo {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// <https://paritytech.github.io/polkadot-sdk/master/polkadot_sdk_docs/reference_docs/frame_origin/index.html>
+		// #[pallet::weight(Weight::default())]
+		#[pallet::weight(T::WeightInfo::set_zk_keys_benchmark())]
+		pub fn set_zk_keys(
+			origin: OriginFor<T>,
+			public_signal: Vec<u8>,
+			vk_alpha1: Vec<u8>,
+			vk_beta_2: Vec<u8>,
+			vk_gamma_2: Vec<u8>,
+			vk_delta_2: Vec<u8>,
+			vk_ic0: Vec<u8>,
+			vk_ic1: Vec<u8>,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			// Convert the u32 into a block number. This is possible because the set of trait bounds
-			// defined in [`frame_system::Config::BlockNumber`].
-			let block_number: BlockNumberFor<T> = bn.into();
+			let vkey = VkeyStr {
+				alpha_1: vk_alpha1,
+				beta_2: vk_beta_2,
+				gamma_2: vk_gamma_2,
+				delta_2: vk_delta_2,
+				ic0: vk_ic0,
+				ic1: vk_ic1,
+			};
+			// ensure valid public signal, public should not be none
+			ensure!(!public_signal.is_empty(), Error::<T>::ErrorPublicSignal);
 
-			// Update storage.
-			<Something<T>>::put(CompositeStruct { block_number });
+			// ensure the verification key's format is correct
+			let _ = parse_vkey::<Bls12>(vkey.clone()).map_err(|_| Error::<T>::ErrorVerificationKey)?;
 
-			// Emit an event.
-			Self::deposit_event(Event::SomethingStored { block_number, who });
+			<PubSignal<T>>::put(&public_signal);
+			<Vkey<T>>::put(&vkey);
 
-			// Return a successful [`DispatchResultWithPostInfo`] or [`DispatchResult`].
-			Ok(().into())
-		}
-
-		/// An example dispatchable that may throw a custom error.
-		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
-		pub fn cause_error(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-			let _who = ensure_signed(origin)?;
-
-			// Read a value from storage.
-			match <Something<T>>::get() {
-				// Return an error if the value has not been set.
-				None => Err(Error::<T>::NoneValue)?,
-				Some(mut old) => {
-					// Increment the value read from storage; will error in the event of overflow.
-					old.block_number = old
-						.block_number
-						.checked_add(&One::one())
-						// ^^ equivalent is to:
-						// .checked_add(&1u32.into())
-						// both of which build a `One` instance for the type `BlockNumber`.
-						.ok_or(Error::<T>::StorageOverflow)?;
-					// Update the value in storage with the incremented result.
-					<Something<T>>::put(old);
-					// Explore how you can rewrite this using
-					// [`frame_support::storage::StorageValue::mutate`].
-					Ok(().into())
-				},
+			Self::deposit_event(Event::<T>::PublicSignalStored(who.clone(), public_signal));
+			Self::deposit_event(Event::<T>::VerificationKeyStored(who, vkey));
+			Ok(())
 			}
+		/// verify the proof of snarkjs with groth16(bellman verification)
+		#[pallet::call_index(1)]
+		// #[pallet::weight(Weight::default())]
+		#[pallet::weight(T::WeightInfo::verify_benchmark())]
+		pub fn verify(
+			origin: OriginFor<T>,
+			proof_a: Vec<u8>,
+			proof_b: Vec<u8>,
+			proof_c: Vec<u8>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let public_signal = PubSignal::<T>::get();
+			let vkeystr = Vkey::<T>::get();
+
+			let pof = ProofStr { pi_a: proof_a, pi_b: proof_b, pi_c: proof_c };
+
+			// parse proof and verification key
+			let proof = parse_proof::<Bls12>(pof.clone()).map_err(|_| Error::<T>::ErrorProof)?;
+			let vkey = parse_vkey::<Bls12>(vkeystr).map_err(|_| Error::<T>::ErrorVerificationKey)?;
+			
+			// prepare pre-verification key
+			let pvk = prepare_verifying_key(&vkey);
+
+			// prepare signal
+			let public_str = from_utf8(&public_signal).map_err(|_| Error::<T>::ParsePulbicSignalError)?;
+
+			// verify the proof
+			ensure!(verify_proof(&pvk, &proof, &[Fr::from_str_vartime(public_str).unwrap()]).is_ok(), Error::<T>::InvalidProof);
+
+			Self::deposit_event(Event::<T>::VerificationPassed(who.clone()));
+			Self::deposit_event(Event::<T>::ProofStored(who, pof));
+
+			Ok(())
 		}
 	}
 }

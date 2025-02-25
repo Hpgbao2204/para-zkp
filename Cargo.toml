@@ -113,5 +113,5 @@ substrate-wasm-builder = { version = "24.0.1", default-features = false }
 ff = { version = "0.13.0", default-features = false }
 pairing = { version = "0.23.0", default-features = false }
 codec = { version = "3.7.4", default-features = false, package = "parity-scale-codec" }
-bls12_381 = { version = "0.8.0", default-features = false }
+bls12_381 = { version = "0.8.0", features = ["pairings"] }
 group = { version = "0.13.0", default-features = false }
