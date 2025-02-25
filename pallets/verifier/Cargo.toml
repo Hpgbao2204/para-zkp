@@ -17,6 +17,7 @@ codec = { features = ["derive"], workspace = true }
 scale-info = { features = ["derive"], workspace = true }
 frame-benchmarking = { optional = true, workspace = true }
 frame-support.workspace = true
+frame-support-procedural.workspace = true
 frame-system.workspace = true
 sp-runtime.workspace = true
 
@@ -24,8 +25,9 @@ sp-runtime.workspace = true
 bellman-verifier = { path = "../../bellman-verifier", default-features = false }
 ff = { workspace = true, default-features = false }
 pairing = { workspace = true, default-features = false }
-bls12_381 = { workspace = true, default-features = false }
+bls12_381 = { workspace = true, features = ["groups"] }
 log = { workspace = true }
+sp-std = { workspace = true, default-features = false }
 
 [dev-dependencies]
 sp-core = { default-features = true, workspace = true }

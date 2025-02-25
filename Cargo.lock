@@ -905,6 +905,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7bc6d6292be3a19e6379786dac800f551e5865a5bb51ebbe3064ab80433f403"
 dependencies = [
  "ff",
+ "group",
  "rand_core",
  "subtle 2.6.1",
 ]
@@ -7114,6 +7115,7 @@ dependencies = [
  "ff",
  "frame-benchmarking",
  "frame-support",
+ "frame-support-procedural",
  "frame-system",
  "log",
  "pairing",
@@ -7122,6 +7124,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk.git)",
 ]
 
 [[package]]
