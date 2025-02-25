@@ -1,5 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use group::{prime::PrimeCurveAffine, Curve};
 use pairing::{MillerLoopResult, MultiMillerLoop};
 use super::{PreparedVerifyingKey, Proof, VerifyingKey, VerificationError};

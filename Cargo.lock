@@ -906,6 +906,7 @@ checksum = "d7bc6d6292be3a19e6379786dac800f551e5865a5bb51ebbe3064ab80433f403"
 dependencies = [
  "ff",
  "group",
+ "pairing",
  "rand_core",
  "subtle 2.6.1",
 ]
@@ -2976,6 +2977,7 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ded41244b729663b1e574f1b4fb731469f69f79c17667b5d776b16cda0479449"
 dependencies = [
+ "bitvec",
  "rand_core",
  "subtle 2.6.1",
 ]

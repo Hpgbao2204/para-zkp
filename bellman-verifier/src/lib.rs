@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod verifier;
+
 use pairing::{Engine, MultiMillerLoop};
 
 use codec::{Decode, Encode};

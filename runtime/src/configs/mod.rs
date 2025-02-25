@@ -306,5 +306,5 @@ impl pallet_collator_selection::Config for Runtime {
 /// Configure the pallet template in pallets/verifier.
 impl pallet_parachain_verifier::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_parachain_verifier::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = pallet_parachain_verifier::weights::WeightInfoImpl<Runtime>;
 }
