@@ -1,0 +1,16 @@
+[package]
+description = "A zk-SNARK library compatiable with substrate"
+license = "MIT/Apache-2.0"
+name = "bellman-verifier"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+group = { workspace = true, default-features = false }
+pairing = { workspace = true, default-features = false }
+codec = { features = ["derive"], workspace = true }
+sp-std = { workspace = true, default-features = false }
+
+[features]
+default = ["std"]
+std = ["sp-std/std", "codec/std"]
