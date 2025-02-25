@@ -307,7 +307,7 @@ mod runtime {
 
 	// Template
 	#[runtime::pallet_index(50)]
-	pub type TemplatePallet = pallet_parachain_template;
+	pub type Verifier = pallet_parachain_verifier;
 }
 
 #[docify::export(register_validate_block)]

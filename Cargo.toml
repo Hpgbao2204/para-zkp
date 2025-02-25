@@ -6,14 +6,14 @@ repository = "https://github.com/paritytech/polkadot-sdk-parachain-template.git"
 edition = "2021"
 
 [workspace]
-members = ["node", "pallets/template", "runtime"]
+members = ["node", "pallets/verifier", "runtime", "bellman-verifier"]
 resolver = "2"
 
 [workspace.dependencies]
 parachain-template-runtime = { path = "./runtime", default-features = false }
-pallet-parachain-template = { path = "./pallets/template", default-features = false }
+pallet-parachain-verifier = { path = "./pallets/verifier", default-features = false }
+
 clap = { version = "4.5.10" }
-codec = { version = "3.6.12", default-features = false, package = "parity-scale-codec" }
 color-print = { version = "0.3.4" }
 cumulus-client-cli = { version = "0.18.0", default-features = false }
 cumulus-client-collator = { version = "0.18.0", default-features = false }
@@ -34,6 +34,7 @@ pallet-transaction-payment-rpc = { version = "41.0.0", default-features = false 
 polkadot-cli = { version = "19.0.0", default-features = false }
 polkadot-primitives = { version = "16.0.0", default-features = false }
 prometheus-endpoint = { version = "0.17.0", default-features = false, package = "substrate-prometheus-endpoint" }
+sp-std = { version = "14.0.0", default-features = false, git = "https://github.com/paritytech/polkadot-sdk.git" }
 sc-basic-authorship = { version = "0.45.0", default-features = false }
 sc-chain-spec = { version = "38.0.0", default-features = false }
 sc-cli = { version = "0.47.0", default-features = false }
@@ -76,6 +77,7 @@ cumulus-primitives-utility = { version = "0.17.0", default-features = false }
 frame-executive = { version = "38.0.0", default-features = false }
 frame-metadata-hash-extension = { version = "0.6.0", default-features = false }
 frame-support = { version = "38.0.0", default-features = false }
+frame-support-procedural = { version = "30.0.0", default-features = false }
 frame-system = { version = "38.0.0", default-features = false }
 frame-system-benchmarking = { version = "38.0.0", default-features = false }
 frame-system-rpc-runtime-api = { version = "34.0.0", default-features = false }
@@ -106,3 +108,10 @@ sp-version = { version = "37.0.0", default-features = false }
 xcm-builder = { version = "17.0.0", default-features = false, package = "staging-xcm-builder" }
 xcm-executor = { version = "17.0.0", default-features = false, package = "staging-xcm-executor" }
 substrate-wasm-builder = { version = "24.0.1", default-features = false }
+
+# zk lib
+ff = { version = "0.13.0", default-features = false }
+pairing = { version = "0.23.0", default-features = false }
+codec = { version = "3.7.4", default-features = false, package = "parity-scale-codec" }
+bls12_381 = { version = "0.8.0", default-features = false }
+group = { version = "0.13.0", default-features = false }
