@@ -1,6 +1,13 @@
 [relaychain]
-default_command = "polkadot"
+default_command = "../polkadot-sdk/target/release/polkadot"
 chain = "rococo-local"
+
+# [relaychain.genesis.runtime.configuration.config]
+# scheduling_lookahead = 2
+
+# [relaychain.genesis.runtime.configuration.config.async_backing_params]
+# max_candidate_depth = 3
+# allowed_ancestry_len = 2
 
 [[relaychain.nodes]]
 name = "alice"
@@ -10,12 +17,33 @@ ws_port = 9944
 [[relaychain.nodes]]
 name = "bob"
 validator = true
-ws_port = 9955
+ws_port = 9945
+
 
 [[parachains]]
-id = 1000
+id = 2500
 
 [parachains.collator]
-name = "charlie"
+name = "collator-1"
 ws_port = 9988
 command = "./target/release/parachain-template-node"
+
+# [[parachains.hrmp_channels]]
+# sender = 2000
+# recipient = 2001
+# max_capacity = 8
+# max_message_size = 102400
+
+[[parachains]]
+id = 2600
+
+[parachains.collator]
+name = "collator-2"
+ws_port = 9989
+command = "./target/release/parachain-template-node"
+
+# [[parachains.hrmp_channels]]
+# sender = 2001
+# recipient = 2000
+# max_capacity = 8
+# max_message_size = 102400

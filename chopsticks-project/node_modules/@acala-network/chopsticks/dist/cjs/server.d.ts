@@ -1,0 +1,10 @@
+import { type SubscriptionManager } from '@acala-network/chopsticks-core';
+export type Handler = (data: {
+    method: string;
+    params: string[];
+}, subscriptionManager: SubscriptionManager) => Promise<any>;
+export declare const createServer: (handler: Handler, port: number, host?: string) => Promise<{
+    addr: string;
+    port: number;
+    close: () => Promise<void>;
+}>;

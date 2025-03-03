@@ -1,0 +1,2 @@
+import type { Blockchain } from '../blockchain/index.js';
+export declare const connectUpward: (parachain: Blockchain, relaychain: Blockchain) => Promise<void>;
